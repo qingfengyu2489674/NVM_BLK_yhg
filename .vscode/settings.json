@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "functional": "c",
+        "hashtable.h": "c",
+        "stdlib.h": "c"
+    }
+}
