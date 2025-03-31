@@ -25,6 +25,22 @@ void build_nvm_block(NvmCacheBlkPool *manager, uint64_t nvm_blk_id, uint64_t lba
     }
 }
 
+void build_nvm_empty_block(NvmCacheBlkPool *manager, uint64_t nvm_blk_id, uint64_t lba)
+{
+    if (lba == UINT64_MAX) 
+    {
+        enqueue(&manager->empty_blocks_queue, nvm_blk_id);  // 构建为空块，使用队列管理
+    }
+}
+
+void build_nvm_valid_block(NvmCacheBlkPool *manager, uint64_t nvm_blk_id, uint64_t lba)
+{
+    if(lba != UINT64_MAX)
+    {
+        insert(manager->used_blocks_table, lba, nvm_blk_id);
+    }
+}
+
 // 获取空的 NVM 块号
 int get_empty_block(NvmCacheBlkPool *manager, uint64_t *nvm_blk_id) 
 {

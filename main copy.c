@@ -14,26 +14,28 @@
 
 #define CACHE_DEVICE_NAME "NVMCache"
 
+// 一些模块参数。
 static char *nvm_phy_addr_ranges = NULL;
-module_param(nvm_phy_addr_ranges, charp, 0644);
+module_param(nvm_phy_addr_ranges, charp, 0644);  // NVM 物理地址范围。
 MODULE_PARM_DESC(nvm_address_ranges,
                  "The NVM physical address ranges. "
                  "Format example: \"0x1000 0x2000 0x3000 0x4000\" "
                  "represents NVM has two physical address ranges [0x1000, "
                  "0x2000) and [0x3000, 0x4000)");
 
+// NVM 物理地址到内核虚拟地址空间的连续映射。
 static unsigned long nvm_virt_addr = 0;
-module_param(nvm_virt_addr, ulong, 0644);
+module_param(nvm_virt_addr, ulong, 0644);  // 映射地址的起始位置。
 
 static unsigned long nvm_virt_range_size = 0;
-module_param(nvm_virt_range_size, ulong, 0644);
+module_param(nvm_virt_range_size, ulong, 0644);  // 映射地址区域的大小。
 
 static char *lower_block_device_file_name = NULL;
-module_param(lower_block_device_file_name, charp, 0644);
+module_param(lower_block_device_file_name, charp, 0644);  // 指向底层真实存在的一个块设备。可能是某个 SSD，给它做缓存。
 MODULE_PARM_DESC(lower_block_device_file_name, "The lower block device file, e.g. /dev/sda");
 
 static int hw_queue_count = 1;
-module_param(hw_queue_count, int, 0644);
+module_param(hw_queue_count, int, 0644);  // 硬件队列数量。
 MODULE_PARM_DESC(hw_queue_count, "Number of hardware queues");
 
 typedef struct NVMCacheDevice {
@@ -48,6 +50,7 @@ typedef struct NVMCacheDevice {
 NVMCacheDevice nvm_dev;
 struct block_device_operations nvm_dev_ops = {};
 
+// 请求队列处理函数，将上层发来的块设备请求（如读写操作）转化为对 NVM 缓存的操作。
 static blk_status_t nvm_cache_queue_rq(struct blk_mq_hw_ctx *hctx, const struct blk_mq_queue_data *bd) {
     struct request *req = bd->rq;
     blk_status_t status = BLK_STS_OK;
@@ -56,12 +59,13 @@ static blk_status_t nvm_cache_queue_rq(struct blk_mq_hw_ctx *hctx, const struct 
 
     blk_mq_start_request(req);
 
+    // 遍历请求的每个 bio_vec，提取扇区地址和缓冲区。
     rq_for_each_segment(bvec, req, iter) {
-        sector_t sector = iter.iter.bi_sector;
-        char *buffer = kmap_atomic(bvec.bv_page);
-        unsigned long offset = bvec.bv_offset;
+        sector_t sector = iter.iter.bi_sector;            // 起始逻辑块地址。
+        char *buffer = kmap_atomic(bvec.bv_page);         // 数据缓冲区起始指针。
+        unsigned long offset = bvec.bv_offset;            // 偏移量。
         u64 sector_cnt = bvec.bv_len / CACHE_BLOCK_SIZE;  // 内核应保证bio segment大小是块设备扇区大小整数倍
-        NvmCacheIoDir dir = bio_data_dir(iter.bio) == WRITE ? CACHE_WRITE : CACHE_READ;
+        NvmCacheIoDir dir = bio_data_dir(iter.bio) == WRITE ? CACHE_WRITE : CACHE_READ;  // bio 方向，决定读/写。
         int ret;
 
         // TODO：
@@ -74,7 +78,7 @@ static blk_status_t nvm_cache_queue_rq(struct blk_mq_hw_ctx *hctx, const struct 
                              .resource_id = hctx->queue_num};
 
         // TODO: 可能睡眠。确认blk-mq的请求处理函数是否工作在进程上下文，如果不是，这里要用工作队列。
-        ret = nvm_cache_handle_io(nvm_dev.cache, &req);
+        ret = nvm_cache_handle_io(nvm_dev.cache, &req);  // I/O 请求处理总入口。
         if (ret) {
             kunmap_atomic(buffer);
             status = BLK_STS_IOERR;
@@ -85,7 +89,7 @@ static blk_status_t nvm_cache_queue_rq(struct blk_mq_hw_ctx *hctx, const struct 
     }
 
 out:
-    blk_mq_end_request(req, status);
+    blk_mq_end_request(req, status);  // 通知块层请求完成。
     return status;
 }
 
@@ -98,6 +102,7 @@ static int create_block_device(NvmCache *cache, NvmAccessor *accessor) {
     struct gendisk *gd;
     NvmCacheLowerDev *lower_bdev = cache->lower_bdev;
 
+    // 创建逻辑上的块设备（如 /dev/NVMCache）。
     ret = register_blkdev(0, CACHE_DEVICE_NAME);
     if (ret < 0) {
         pr_err("failed to alloc major number\n");
@@ -112,6 +117,7 @@ static int create_block_device(NvmCache *cache, NvmAccessor *accessor) {
         goto ERR_REGISER_MAJOR;
     }
 
+    // 初始化 mq 标签集 tag_set。
     nvm_dev.tag_set.ops = &nvm_mq_ops;
     nvm_dev.tag_set.nr_hw_queues = hw_queue_count;
     nvm_dev.tag_set.queue_depth = 128;  // 暂时写死队列深度，如有需要增加模块参数调整
@@ -126,6 +132,7 @@ static int create_block_device(NvmCache *cache, NvmAccessor *accessor) {
         goto ERR_ALLOC_DISK;
     }
 
+    // 初始化请求队列。
     nvm_dev.queue = blk_mq_init_queue(&nvm_dev.tag_set);
     if (IS_ERR(nvm_dev.queue)) {
         pr_err("failed to init queue\n");
@@ -133,6 +140,7 @@ static int create_block_device(NvmCache *cache, NvmAccessor *accessor) {
         goto ERR_TAG_SET;
     }
 
+    // 设置逻辑块和物理块的大小。
     blk_queue_physical_block_size(nvm_dev.queue, CACHE_BLOCK_SIZE);
     blk_queue_logical_block_size(nvm_dev.queue, CACHE_BLOCK_SIZE);
 
@@ -164,14 +172,11 @@ ERR_OUT:
 }
 
 static int __init nvm_cache_module_init(void) {
-
     int ret = 0;
     NvmAccessor *accessor = NULL;
     NvmCache *cache = NULL;
+    int formatted = 0;
 
-    // TODO:初始化工作
-        // TODO:构建accessor,实现对NVM的按字节访问
-    
     accessor = kmalloc(sizeof(*accessor), GFP_KERNEL);
     if (!accessor) {
         pr_err("failed to alloc NvmAccessor\n");
@@ -179,34 +184,63 @@ static int __init nvm_cache_module_init(void) {
         goto ERR_ALLOC_ACCESSOR;
     }
 
-      // 解析模块参数，构造NvmAccessor
-      ret = nvm_accessor_init(accessor, nvm_phy_addr_ranges, nvm_virt_addr, nvm_virt_range_size);
-      if (ret) {
-          pr_err("failed to init NvmAccessor\n");
-          goto ERR_INIT_ACCESSOR;
-      }
-  
+    // 解析模块参数，构造NvmAccessor
+    ret = nvm_accessor_init(accessor, nvm_phy_addr_ranges, nvm_virt_addr, nvm_virt_range_size);
+    if (ret) {
+        pr_err("failed to init NvmAccessor\n");
+        goto ERR_INIT_ACCESSOR;
+    }
 
+    // 检查是否格式化，如果没有，格式化nvm cache
+    ret = nvm_cache_is_formatted(&formatted, accessor, lower_block_device_file_name);
+    if (ret) {
+        pr_err("check nvm cache format failed\n");
+        goto ERR_INITED_ACCESSOR;
+    }
+    if (!formatted) {
+        // TODO 按需添加更多格式化参数
+        NvmCacheFormatArgs arg = {.lower_device_file = lower_block_device_file_name, .queue_num = hw_queue_count};
+        ret = nvm_cache_format(accessor, &arg);
+        if (ret) {
+            pr_err("failed to format nvm cache\n");
+            goto ERR_INITED_ACCESSOR;
+        }
+    }
 
-    // TODO:构建核心数据结构 NVMCache
+    // 开始初始化，创建核心数据结构NvmCache
     cache = kmalloc(sizeof(*cache), GFP_KERNEL);
     if (!cache) {
         pr_err("failed to alloc NvmCache\n");
         ret = -ENOMEM;
         goto ERR_INITED_ACCESSOR;
     }
-
-    
     ret = nvm_cache_init(cache, accessor);
     if (ret) {
         pr_err("failed to init nvm cache\n");
         goto ERR_INIT_CACHE;
     }
 
-    // TODO:格式化结构，遍历NVM头部映射数组，依赖于核心数据结构的实现
+    // 创建块设备。
+    ret = create_block_device(cache, accessor);
+    if (ret) {
+        pr_err("failed to create block device\n");
+        goto ERR_CREATE_BDEV;
+    }
 
-    // 构建虚拟块设备
+    pr_info("nvm cache module initialized successfully.\n");
 
+    return ret;
+
+ERR_CREATE_BDEV:
+    nvm_cache_destruct(cache);
+ERR_INIT_CACHE:
+    kfree(cache);
+ERR_INITED_ACCESSOR:
+    nvm_accessor_destruct(accessor);
+ERR_INIT_ACCESSOR:
+    kfree(accessor);
+ERR_ALLOC_ACCESSOR:
+    return ret;
 }
 
 static void __exit nvm_cache_module_exit(void) {

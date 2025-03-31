@@ -16,7 +16,9 @@ typedef struct NvmCacheBlkPool
 void init_nvm_blk_pool(NvmCacheBlkPool *manager, size_t hash_table_size);
 
 // 构建 NVM 块
-void build_nvm_block(NvmCacheBlkPool *manager, uint64_t nvm_block_id, uint64_t lba);
+void build_nvm_empty_block(NvmCacheBlkPool *manager, uint64_t nvm_blk_id, uint64_t lba);
+
+void build_nvm_valid_block(NvmCacheBlkPool *manager, uint64_t nvm_blk_id, uint64_t lba);
 
 // 获取空的 NVM 块号
 // 如果返回值为0，则返回的是空nvm块

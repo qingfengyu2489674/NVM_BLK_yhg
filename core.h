@@ -1,20 +1,24 @@
 #ifndef NVM_CACHE_CORE
 #define NVM_CACHE_CORE
 
-//typedef struct NvmAccessor NvmAccessor;
-typedef struct block_device block_device;
-//typedef struct NvmCacheMapper NvmCacheMapper;
+#include "accessor.h"
+#include "lower_dev.h"
+#include "mapper.h"
+#include "NvmBlkPoolManager/blk_pool.h"
+#include "lower_dev.h"
+
+typedef struct NvmAccessor NvmAccessor;
+typedef struct NvmCacheMapper NvmCacheMapper;
 typedef struct NvmCacheBlkPool NvmCacheBlkPool;
 //typedef struct NvmTransactionManager NvmTransactionManager;
 typedef struct NvmCacheLowerDev NvmCacheLowerDev;
 
 // 保存所有关键数据结构的引用
 typedef struct NvmCache {
-    //NvmAccessor *accessor;
+    NvmAccessor *accessor;
     NvmCacheLowerDev *lower_bdev;
-    //NvmCacheMapper *mapper;
+    NvmCacheMapper *mapper;
     NvmCacheBlkPool *blk_pool;  // 此处范例为NVM上只有一个全局缓存池
-    //NvmTransactionManager *txn_mgr;
 
     // TODO
 } NvmCache;
