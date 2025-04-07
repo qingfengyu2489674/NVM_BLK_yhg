@@ -4,11 +4,13 @@
 #include "core.h"
 
 
-int cache_mapper_init(NvmCacheMapper *mapper, u64 nvm_phy_length) 
+NvmCacheMapper* cache_mapper_init(u64 nvm_phy_length) 
 {
+    NvmCacheMapper *mapper = (NvmCacheMapper*)malloc(sizeof(NvmCacheMapper));
+
     if (!mapper) 
     {
-        return -1;
+        return NULL;
     }
 
     u64 element_size = CACHE_BLOCK_SIZE + MAPPER_ELEMENT_SIZE;
@@ -16,12 +18,19 @@ int cache_mapper_init(NvmCacheMapper *mapper, u64 nvm_phy_length)
     u64 element_num = (nvm_phy_length - reserved_length) / element_size;
 
     mapper->element_num = element_num;
-
     mapper->func_array = (mapper_scan_func*)malloc(NUM_MAPPER_SCAN_FUNCS * sizeof(mapper_scan_func));
-    mapper->func_count = 0;
     
-    return 0;
+    if (!mapper->func_array) 
+    {
+        free(mapper);
+        return NULL;
+    }
+
+    mapper->func_count = 0;
+
+    return mapper;
 }
+
 
 void register_mapper_scan_func(NvmCacheMapper *mapper, mapper_scan_func func) 
 {
@@ -33,7 +42,6 @@ void register_mapper_scan_func(NvmCacheMapper *mapper, mapper_scan_func func)
     else 
     {
         return;
-        // TODO:错误处理,函数数组已满
     }
 }
 
@@ -60,6 +68,8 @@ int get_lba(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id)
     u64 offset = (id + CACHE_BLOCK_START_INDEX) * MAPPER_ELEMENT_SIZE;
 
     int count;
+
+    printf("blk_index: %d \n", id);
 
     count = nvm_accessor_read_byte(accessor, &buffer, offset);
     if (count < sizeof(buffer)) 
@@ -106,6 +116,7 @@ int cache_mapper_scan(NvmCache *cache)
 
     for(blk_index = 0; blk_index < mapper->element_num; blk_index++)
     {
+        printf("blk_index: %d \n", blk_index);
         ret = get_lba(accessor, &lba, blk_index);
         if(ret)
         {

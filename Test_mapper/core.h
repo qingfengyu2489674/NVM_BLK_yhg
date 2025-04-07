@@ -24,8 +24,8 @@ typedef struct NvmCache {
 // 初始化 NvmCache 对象，返回 0 表示成功，其他返回值表示错误。
 // 注意：cache 不拥有 accessor 的所有权，析构时不需要处理 accessor。
 // cache 对 lower_bdev, mapper, blk_pool 等有所有权，析构时需要释放它们。
-int nvm_cache_init(NvmCache *cache, NvmAccessor *accessor, NvmCacheLowerDev *lower_bdev, 
-                   NvmCacheMapper *mapper, NvmCacheBlkPool *blk_pool);
+NvmCache* nvm_cache_init(NvmAccessor *accessor,
+            NvmCacheMapper *mapper, NvmCacheBlkPool *blk_pool);
 
 // 析构 NvmCache 对象，释放所有相关资源
 void nvm_cache_destruct(NvmCache *self);

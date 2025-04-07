@@ -34,7 +34,7 @@ typedef struct NvmCacheMapper
 
 /***********************public API***********************/
 
-int cache_mapper_init(NvmCacheMapper *mapper, u64 nvm_phy_length);
+NvmCacheMapper* cache_mapper_init(u64 nvm_phy_length);
 void cache_mapper_destruct(NvmCacheMapper *self);
 
 void register_mapper_scan_func(NvmCacheMapper *mapper, mapper_scan_func func);

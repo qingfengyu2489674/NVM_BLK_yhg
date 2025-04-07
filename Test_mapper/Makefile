@@ -1,6 +1,6 @@
 # 设置编译器和编译选项
 CC = g++
-CFLAGS = -Wall -Wextra -std=c++11 -O2
+CFLAGS = -Wall -Wextra -std=c++11 -O0 -g
 
 # Google Test 库和头文件路径
 GTEST_LIBS = -lgtest -lgtest_main -pthread

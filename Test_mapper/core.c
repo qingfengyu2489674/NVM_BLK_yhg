@@ -4,29 +4,38 @@
 #include "mapper.h"
 #include "blk_pool.h"
 
-int nvm_cache_init(NvmCache *cache, NvmAccessor *accessor, NvmCacheLowerDev *lower_bdev, 
-                        NvmCacheMapper *mapper, NvmCacheBlkPool *blk_pool) 
+NvmCache* nvm_cache_init(NvmAccessor *accessor, 
+                         NvmCacheMapper *mapper, NvmCacheBlkPool *blk_pool) 
 {
+    // 动态分配 NvmCache 结构体内存
+    NvmCache *cache = (NvmCache*)malloc(sizeof(NvmCache));
+    
+    // 检查内存分配是否成功
     if (cache == NULL) 
     {
-        DEBUG_PRINT("Error in nvm_cache_init: cache is NULL.\n");
-        return -1;
+        DEBUG_PRINT("Error in nvm_cache_init: Memory allocation for cache failed.\n");
+        return NULL; // 返回 NULL 表示内存分配失败
     }
 
-    if (accessor == NULL || lower_bdev == NULL || mapper == NULL || blk_pool == NULL) 
+    // 检查输入参数
+    if (accessor == NULL || mapper == NULL || blk_pool == NULL) 
     {
         DEBUG_PRINT("Error in nvm_cache_init: One or more required parameters are NULL.\n");
-        return -1;
+        free(cache);  // 如果参数为空，释放已分配的内存
+        return NULL;  // 返回 NULL
     }
 
+    // 初始化结构体成员
     cache->accessor = accessor;
-    cache->lower_bdev = lower_bdev;
     cache->mapper = mapper;
     cache->blk_pool = blk_pool;
 
     DEBUG_PRINT("NvmCache initialized successfully.\n");
-    return 0;  // 初始化成功
+    
+    return cache;  // 返回指向分配的 NvmCache 结构体的指针
 }
+
+
 
 void nvm_cache_destruct(NvmCache *self) 
 {
