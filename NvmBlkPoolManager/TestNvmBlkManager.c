@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "blk_pool.h"
+#include "blk_pool.h"  // 包含要测试的头文件
 
 // 测试初始化 NvmCacheBlkPool
 TEST(NvmBlkManagerTest, Init) {
@@ -22,7 +22,7 @@ TEST(NvmBlkManagerTest, BuildEmptyBlock) {
     int result;
 
     // 构建一个空块，LBA 为 UINT64_MAX
-    build_nvm_block(&manager, 100, UINT64_MAX);  
+    build_nvm_empty_block(&manager, 100, UINT64_MAX);
 
     // 获取空块
     result = get_empty_block(&manager, &block);
@@ -39,7 +39,7 @@ TEST(NvmBlkManagerTest, BuildUsedBlock) {
     int result;
 
     // 构建一个有效块，LBA 为非 UINT64_MAX
-    build_nvm_block(&manager, 200, 123);  
+    build_nvm_valid_block(&manager, 200, 123);
 
     // 获取空块，队列中没有空块，应该从哈希表获取
     result = get_empty_block(&manager, &block);
@@ -60,8 +60,8 @@ TEST(NvmBlkManagerTest, GetEmptyBlockFromHashTable) {
     int result;
 
     // 构建有效块（LBA 非最大值）
-    build_nvm_block(&manager, 300, 1);  
-    build_nvm_block(&manager, 400, 2);  
+    build_nvm_valid_block(&manager, 300, 1);
+    build_nvm_valid_block(&manager, 400, 2);
 
     // 队列为空，哈希表中有块
     result = get_empty_block(&manager, &block);
@@ -83,7 +83,7 @@ TEST(NvmBlkManagerTest, GetEmptyBlockNoBlocks) {
 
     // 队列和哈希表都没有块
     result = get_empty_block(&manager, &block);
-    ASSERT_EQ(result, 1);  // 应该返回 0
+    ASSERT_EQ(result, 1);  // 应该返回 1
     ASSERT_EQ(block, UINT64_MAX);  // 获取到的块应该是 UINT64_MAX
 }
 
@@ -93,8 +93,8 @@ TEST(NvmBlkManagerTest, SearchNvmBlkOfLba) {
     init_nvm_blk_pool(&manager, 10);
 
     // 构建有效块
-    build_nvm_block(&manager, 500, 1);
-    build_nvm_block(&manager, 600, 2);
+    build_nvm_valid_block(&manager, 500, 1);
+    build_nvm_valid_block(&manager, 600, 2);
 
     uint64_t *block;
 
@@ -111,15 +111,14 @@ TEST(NvmBlkManagerTest, SearchNvmBlkOfLba) {
     ASSERT_EQ(block, nullptr);  // LBA 3 不存在，应该返回 nullptr
 }
 
-
 // 测试销毁 NvmCacheBlkPool
 TEST(NvmBlkManagerTest, Destroy) {
     NvmCacheBlkPool manager;
     init_nvm_blk_pool(&manager, 10);  // 初始化 NvmCacheBlkPool
 
     // 构建一些块，确保队列和哈希表中有数据
-    build_nvm_block(&manager, 100, UINT64_MAX);  // 空块
-    build_nvm_block(&manager, 200, 123);  // 有效块
+    build_nvm_empty_block(&manager, 100, UINT64_MAX);  // 空块
+    build_nvm_valid_block(&manager, 200, 123);  // 有效块
 
     // 在销毁之前，验证队列和哈希表中有块
     uint64_t block;
@@ -134,17 +133,6 @@ TEST(NvmBlkManagerTest, Destroy) {
     // 销毁 NvmCacheBlkPool
     destroy_nvm_blk_pool(&manager);
 
-
-    /*
-    // 销毁之后，队列应该为空，哈希表应该为空
-    result = get_empty_block(&manager, &block);
-    ASSERT_EQ(result, 0);  // 应该返回 0，因为队列为空
-    ASSERT_EQ(block, UINT64_MAX);  // 获取到的块应该是 UINT64_MAX
-
-    // 验证哈希表是否被清除
-    val = search_nvm_blk_by_lba(&manager, 123);
-    ASSERT_EQ(val, nullptr);  // 应该返回 nullptr，因为块已经被销毁
-    */
-
     // 如果有适当的内存检查工具（如 AddressSanitizer 或 Valgrind），可以确保没有内存泄漏
 }
+

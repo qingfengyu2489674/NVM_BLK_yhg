@@ -2,8 +2,9 @@
 #define NVM_CACHE_DEFS
 
 #include <linux/types.h>
+#include <stdint.h>
 
-typedef uint64_t  u64;
+typedef uint64_t u64;
 typedef uint32_t u32;
 
 typedef u64 LbaType;

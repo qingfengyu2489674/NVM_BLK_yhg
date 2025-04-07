@@ -1,5 +1,5 @@
 #include "hashtable.h"
-#include "../defs.h"
+#include "../../defs.h"
 #include <stdlib.h>
 
 // 内部哈希函数：简单取模
