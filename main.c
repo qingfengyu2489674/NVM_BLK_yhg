@@ -9,10 +9,14 @@
 #include "core.h"
 #include "defs.h"
 #include "format.h"
+#include "mapper.h"
 #include "io_handler.h"
 #include "lower_dev.h"
+#include "manager.h"
 
 #define CACHE_DEVICE_NAME "NVMCache"
+
+const char *dev_name = "default_device";
 
 static char *nvm_phy_addr_ranges = NULL;
 module_param(nvm_phy_addr_ranges, charp, 0644);
@@ -164,14 +168,23 @@ ERR_OUT:
 }
 
 static int __init nvm_cache_module_init(void) {
-
     int ret = 0;
     NvmAccessor *accessor = NULL;
+    NvmManager *accessor_manager = NULL;
+    NvmCacheMapper *mapper = NULL;
+    NvmCacheBlkPool *blk_pool = NULL;
+    NvmCacheLowerDev *lower_dev = NULL;
     NvmCache *cache = NULL;
 
-    // TODO:初始化工作
-        // TODO:构建accessor,实现对NVM的按字节访问
-    
+    accessor_manager = kmalloc(sizeof(*accessor_manager), GFP_KERNEL);
+    if (!accessor_manager) {
+        pr_err("failed to alloc accessor_manager\n");
+        ret = -ENOMEM;
+        goto ERR_ALLOC_ACCESSOR_MANAGER;
+    }
+
+    NvmManager* nvm_addr_map_manager_init(nvm_phy_start_addr, nvm_phy_length);
+        
     accessor = kmalloc(sizeof(*accessor), GFP_KERNEL);
     if (!accessor) {
         pr_err("failed to alloc NvmAccessor\n");
@@ -179,42 +192,91 @@ static int __init nvm_cache_module_init(void) {
         goto ERR_ALLOC_ACCESSOR;
     }
 
-      // 解析模块参数，构造NvmAccessor
-      ret = nvm_accessor_init(accessor, nvm_phy_addr_ranges, nvm_virt_addr, nvm_virt_range_size);
-      if (ret) {
-          pr_err("failed to init NvmAccessor\n");
-          goto ERR_INIT_ACCESSOR;
-      }
-  
+    ret = nvm_accessor_init(NvmManager);
+    if (ret) {
+        pr_err("failed to init NvmAccessor\n");
+        goto ERR_INIT_ACCESSOR;
+    }
 
+    ret = cache_mapper_init(NvmCacheMapper *mapper, u64 nvm_phy_length);
+    if (ret) {
+        pr_err("failed to init NvmCacheMapper\n");
+        goto ERR_INIT_MAPPER;
+    }
 
-    // TODO:构建核心数据结构 NVMCache
+    blk_pool = kmalloc(sizeof(*blk_pool), GFP_KERNEL);
+    if (!blk_pool) {
+        pr_err("failed to alloc blk_pool\n");
+        ret = -ENOMEM;
+        goto ERR_INITED_BLK_POOL;
+    }
+
+    init_nvm_blk_pool(blk_pool, 32);
+
+    lower_dev = kmalloc(sizeof(*lower_dev), GFP_KERNEL);
+    if (!lower_dev) {
+        pr_err("failed to alloc lower_dev\n");
+        ret = -ENOMEM;
+        goto ERR_INITED_LOWER_DEV;
+    }
+
+    ret = lower_dev_init(lower_dev, const char *dev_name);
+
+    // 开始初始化，创建核心数据结构NvmCache
     cache = kmalloc(sizeof(*cache), GFP_KERNEL);
     if (!cache) {
         pr_err("failed to alloc NvmCache\n");
         ret = -ENOMEM;
-        goto ERR_INITED_ACCESSOR;
+        goto ERR_ALLOC_CACHE;
     }
-
     
-    ret = nvm_cache_init(cache, accessor);
+    ret = nvm_cache_init(cache, accessor, accessor_manager, mapper, blk_pool, lower_bdev);
     if (ret) {
         pr_err("failed to init nvm cache\n");
         goto ERR_INIT_CACHE;
     }
 
-    // TODO:格式化结构，遍历NVM头部映射数组，依赖于核心数据结构的实现
+    // 创建块设备。
+    ret = create_block_device(cache, accessor);
+    if (ret) {
+        pr_err("failed to create block device\n");
+        goto ERR_CREATE_BDEV;
+    }
 
-    // 构建虚拟块设备
+    ret = nvm_cache_format(cache);
+    // TODO
+
+    ret = cache_mapper_scan(cache);
+    // TODO
+
+    pr_info("nvm cache module initialized successfully.\n");
+
+    return ret;
+
+    ERR_CREATE_BDEV:
+        nvm_cache_destruct(cache);
+    ERR_INIT_CACHE:
+        kfree(cache);
+    ERR_INIT_MAPPER:
+        cache_mapper_destruct(mapper);
+    ERR_INITED_ACCESSOR:
+        nvm_accessor_destruct(accessor);
+    ERR_INIT_ACCESSOR:
+        kfree(accessor);
+    ERR_ALLOC_ACCESSOR:
+        return ret;
 
 }
 
-static void __exit nvm_cache_module_exit(void) {
-    if (nvm_dev.gd) {
+static void __exit nvm_cache_module_exit(void) 
+{
+    if (nvm_dev.gd) 
+    {
         del_gendisk(nvm_dev.gd);
         put_disk(nvm_dev.gd);
     }
-    if (nvm_dev.queue) {
+    if (nvm_dev.queue) 
+    {
         blk_cleanup_queue(nvm_dev.queue);
     }
     blk_mq_free_tag_set(&nvm_dev.tag_set);

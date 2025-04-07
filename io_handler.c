@@ -1,6 +1,9 @@
 #include "io_handler.h"
 #include "lower_dev.h"
 #include "NvmBlkPoolManager/blk_pool.h"
+#include "mapper.h"
+#include "core.h"
+#include "defs.h"
 
 
 int nvm_cache_handle_io(NvmCache *cache, NvmCacheIoReq *req)
@@ -18,17 +21,35 @@ int nvm_cache_handle_io(NvmCache *cache, NvmCacheIoReq *req)
 int nvm_cache_handle_read_io(NvmCache *cache, NvmCacheIoReq *req)
 {
     int ret;
-    uint64_t lba_offset = 0;
+    u64 lba_offset = 0;
 
     while(lba_offset < req->lba_num)
     {
-        uint64_t *nvm_blk_ptr = NULL;
-        nvm_blk_ptr = search_nvm_blk_of_lba(cache->blk_pool, req->lba + lba_offset);
+        u64 *nvm_blk_ptr = NULL;
+        nvm_blk_ptr = search_nvm_blk_by_lba(cache->blk_pool, req->lba + lba_offset);
 
         // 判断 lba 是否在 nvm_blk 中，若在，进入内部逻辑，不在，直接转发至 lower_dev 接口
         if(nvm_blk_ptr)
         {
-            // TODO: 通过 nvm_blk_id 读取对应的 Nvm 块，存放至对应的 buffer 对应的偏移中
+            NvmCacheBlkId blk_id;
+
+            blk_id = CALCULATE_BLK_ID(cache->mapper->element_num) + *nvm_blk_ptr;
+
+            void *target_buffer = req->buffer + lba_offset * CACHE_BLOCK_SIZE;
+
+            // 执行读取操作
+            ret = nvm_accessor_read_block(cache->accessor, target_buffer, blk_id);
+            if (ret < 0) 
+            {
+               
+                DEBUG_PRINT("Read block failed, blk_id: %zu, error: %d\n", blk_id, ret);
+                return -1;
+            } 
+            else 
+            {
+                DEBUG_PRINT("Block %zu read successfully into buffer\n", blk_id);
+            }
+
         }
         else
         {                
@@ -61,17 +82,33 @@ int nvm_cache_handle_read_io(NvmCache *cache, NvmCacheIoReq *req)
 int nvm_cache_handle_write_io(NvmCache *cache, NvmCacheIoReq *req)
 {
     int ret;
-    uint64_t lba_offset = 0;
+    u64 lba_offset = 0;
 
     while(lba_offset < req->lba_num)
     {
-        uint64_t *nvm_blk_ptr = NULL;
-        nvm_blk_ptr = search_nvm_blk_of_lba(cache->blk_pool, req->lba + lba_offset);
+        u64 *nvm_blk_ptr = NULL;
+        nvm_blk_ptr = search_nvm_blk_by_lba(cache->blk_pool, req->lba + lba_offset);
 
         // 判断 lba 是否在 nvm_blk 中，若在，进入内部逻辑，不在，直接转发至 lower_dev 接口
         if(nvm_blk_ptr)
         {
-            // TODO: 通过 nvm_blk_id 写对应的 Nvm 块，存放至对应的 buffer 对应的偏移中
+            NvmCacheBlkId blk_id;
+
+            blk_id = CALCULATE_BLK_ID(cache->mapper->element_num) + *nvm_blk_ptr;
+
+            void *target_buffer = req->buffer + lba_offset * CACHE_BLOCK_SIZE;
+
+            ret = nvm_accessor_write_block(cache->accessor, target_buffer, blk_id);
+            if (ret < 0) 
+            {
+                DEBUG_PRINT("Write block failed, blk_id: %zu, error: %d\n", blk_id, ret);
+                return -1;
+            } 
+            else 
+            {
+                DEBUG_PRINT("Block %zu write successfully into buffer\n", blk_id);
+            }
+
         }
         else
         {
@@ -93,9 +130,19 @@ int nvm_cache_handle_write_io(NvmCache *cache, NvmCacheIoReq *req)
                     return -ENOMEM;    
                 }
 
-                uint64_t *write_back_lba = NULL;
+                u64 *write_back_lba = NULL;
 
-                // TODO: 查询 nvm 上的映射数组，将 *nvm_blk_ptr 转化为对应的 lba 号，写入 *write_back_lba。
+                // 查询 nvm 上的映射数组，将 *nvm_blk_ptr 转化为对应的 lba 号，写入 *write_back_lba。
+                ret = get_lba(cache->accessor, write_back_lba, *nvm_blk_ptr);
+                if (ret < 0) 
+                {
+                    DEBUG_PRINT("get_lba() failed with error: %d\n", ret);
+                    return ret;
+                } 
+                else 
+                {
+                    DEBUG_PRINT("get_lba() succeeded, lba: %lu\n", write_back_lba);
+                }
                 
                 if(write_back_lba == NULL)
                 {
@@ -103,6 +150,21 @@ int nvm_cache_handle_write_io(NvmCache *cache, NvmCacheIoReq *req)
                 }
 
                 // TODO: 将数据从 nvm 块中读到 write_back_buffer 中，为下一步写回做准备
+                NvmCacheBlkId write_back_blk_id;
+
+                write_back_blk_id = CALCULATE_BLK_ID(cache->mapper->element_num) + *write_back_lba;
+    
+                ret = nvm_accessor_read_block(cache->accessor, write_back_buffer, write_back_blk_id);
+                if (ret < 0) 
+                {
+                    DEBUG_PRINT("Read block failed, write_back_blk_id: %zu, error: %d\n", write_back_blk_id, ret);
+                    return -1;
+                } 
+                else 
+                {
+                    DEBUG_PRINT("write_back_blk_id %zu read successfully into buffer\n", write_back_blk_id);
+                }
+
                 LowerDevIoReq *lower_req;
                 lower_req = kmalloc(sizeof(LowerDevIoReq), GFP_KERNEL);
                 if (!lower_req) {
@@ -122,7 +184,21 @@ int nvm_cache_handle_write_io(NvmCache *cache, NvmCacheIoReq *req)
                            req->lba, lower_req->sector, lower_req->sector_num);
                 }
 
-                // TODO: 对 nvm_blk_id 所指向的 nvm 块进行写操作
+                // TODO: 对 write_back_blk_id 所指向的 nvm 块进行写操作
+
+                void *target_buffer = req->buffer + lba_offset * CACHE_BLOCK_SIZE;
+
+                ret = nvm_accessor_write_block(cache->accessor, target_buffer, write_back_blk_id);
+                if (ret < 0) 
+                {
+                    DEBUG_PRINT("Write block failed, blk_id: %zu, error: %d\n", write_back_blk_id, ret);
+                    return -1;
+                } 
+                else 
+                {
+                    DEBUG_PRINT("Block %zu write successfully into buffer\n", write_back_blk_id);
+                }
+
 
                 // 在 blk_pool 中进行记录
                 build_nvm_block(cache->blk_pool, nvm_blk_ptr, req->lba + lba_offset);

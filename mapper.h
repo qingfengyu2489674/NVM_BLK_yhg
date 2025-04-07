@@ -10,16 +10,19 @@ typedef struct NvmTransaction NvmTransaction;
 
 #define NUM_MAPPER_SCAN_FUNCS 10
 #define CACHE_BLOCK_START_INDEX 1
+#define MAPPER_ELEMENT_SIZE 8 
+#define CALCULATE_BLK_ID(element_num) \
+    ((size_t)((element_num + CACHE_BLOCK_START_INDEX) * MAPPER_ELEMENT_SIZE + (CACHE_BLOCK_SIZE - 1)) / CACHE_BLOCK_SIZE)
 
-typedef void (*mapper_scan_func)(NvmCacheBlkPool *manager, uint64_t nvm_blk_id, uint64_t lba);
+
+typedef void (*mapper_scan_func)(NvmCacheBlkPool *manager, u64 nvm_blk_id, u64 lba);
 
 // 简单实现：以扇区为单位管理缓存，可以确保IO不会访问到单个缓存块的部分范围，方便管理
 typedef struct NvmCacheMapper 
 {
     // TODO
     // 这种数据结构在NVM上通用，可以封装起来单独实现，这里变成更上层的包装
-
-    u64 block_num;
+    u64 element_num;
     mapper_scan_func *func_array;
     size_t func_count; 
 
@@ -32,8 +35,10 @@ void cache_mapper_destruct(NvmCacheMapper *self);
 
 void register_mapper_scan_func(NvmCacheMapper *mapper, mapper_scan_func func);
 
-int cache_mapper_get(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id);
-int cache_mapper_set(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id);
+int get_lba(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id);
+int set_lba(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id);
+
+int cache_mapper_scan(NvmCache *cache);
 
 /***********************public API***********************/
 

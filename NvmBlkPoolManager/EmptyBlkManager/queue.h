@@ -1,8 +1,6 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
-#include <stdint.h>
-
 // 节点结构
 typedef struct Node 
 {

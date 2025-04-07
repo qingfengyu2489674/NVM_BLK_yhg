@@ -1,6 +1,4 @@
-#include "nvm_accessor.h"
 
-#include "nvm_manager.h"
 #include "defs.h"
 
 #include <linux/io.h>

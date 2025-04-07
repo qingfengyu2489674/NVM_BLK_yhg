@@ -47,7 +47,7 @@ TEST(NvmBlkManagerTest, BuildUsedBlock) {
     ASSERT_EQ(block, 200UL);  // 获取到的块应该是 200
 
     // 验证哈希表中是否已删除块 200
-    uint64_t *val = search_nvm_blk_of_lba(&manager, 123);  // 通过 LBA 查找块
+    uint64_t *val = search_nvm_blk_by_lba(&manager, 123);  // 通过 LBA 查找块
     ASSERT_EQ(val, nullptr);  // 该块应该已经被删除
 }
 
@@ -87,7 +87,7 @@ TEST(NvmBlkManagerTest, GetEmptyBlockNoBlocks) {
     ASSERT_EQ(block, UINT64_MAX);  // 获取到的块应该是 UINT64_MAX
 }
 
-// 测试 search_nvm_blk_of_lba 函数的正确性
+// 测试 search_nvm_blk_by_lba 函数的正确性
 TEST(NvmBlkManagerTest, SearchNvmBlkOfLba) {
     NvmCacheBlkPool manager;
     init_nvm_blk_pool(&manager, 10);
@@ -99,15 +99,15 @@ TEST(NvmBlkManagerTest, SearchNvmBlkOfLba) {
     uint64_t *block;
 
     // 测试通过 LBA 查找
-    block = search_nvm_blk_of_lba(&manager, 1);
+    block = search_nvm_blk_by_lba(&manager, 1);
     ASSERT_NE(block, nullptr);  // 应该返回有效块
     ASSERT_EQ(*block, 500UL);  // 应该是 500
 
-    block = search_nvm_blk_of_lba(&manager, 2);
+    block = search_nvm_blk_by_lba(&manager, 2);
     ASSERT_NE(block, nullptr);  // 应该返回有效块
     ASSERT_EQ(*block, 600UL);  // 应该是 600
 
-    block = search_nvm_blk_of_lba(&manager, 3);
+    block = search_nvm_blk_by_lba(&manager, 3);
     ASSERT_EQ(block, nullptr);  // LBA 3 不存在，应该返回 nullptr
 }
 
@@ -127,7 +127,7 @@ TEST(NvmBlkManagerTest, Destroy) {
     ASSERT_EQ(result, 0);  // 应该返回空块
     ASSERT_EQ(block, 100UL);  // 应该是 100
 
-    uint64_t *val = search_nvm_blk_of_lba(&manager, 123);
+    uint64_t *val = search_nvm_blk_by_lba(&manager, 123);
     ASSERT_NE(val, nullptr);  // 哈希表中应该找到有效块
     ASSERT_EQ(*val, 200UL);  // 应该是 200
 
@@ -142,7 +142,7 @@ TEST(NvmBlkManagerTest, Destroy) {
     ASSERT_EQ(block, UINT64_MAX);  // 获取到的块应该是 UINT64_MAX
 
     // 验证哈希表是否被清除
-    val = search_nvm_blk_of_lba(&manager, 123);
+    val = search_nvm_blk_by_lba(&manager, 123);
     ASSERT_EQ(val, nullptr);  // 应该返回 nullptr，因为块已经被销毁
     */
 

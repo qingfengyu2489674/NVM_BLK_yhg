@@ -1,8 +1,9 @@
 #include "hashtable.h"
+#include "../defs.h"
 #include <stdlib.h>
 
 // 内部哈希函数：简单取模
-static size_t hash_func(uint64_t key, size_t size) 
+static size_t hash_func(u64 key, size_t size) 
 {
     return key % size;
 }
@@ -26,7 +27,7 @@ HashTable *create_hashtable(size_t size)
 }
 
 // 插入操作：如果键存在则更新，不存在则插入新节点（插入到链表头）
-int insert(HashTable *ht, uint64_t key, uint64_t value) 
+int insert(HashTable *ht, u64 key, u64 value) 
 {
     if (!ht) 
         return -1;
@@ -55,7 +56,7 @@ int insert(HashTable *ht, uint64_t key, uint64_t value)
 }
 
 // 删除操作：删除指定键对应的节点
-int delete_key(HashTable *ht, uint64_t key) 
+int delete_key(HashTable *ht, u64 key) 
 {
     if (!ht) 
         return -1;
@@ -82,7 +83,7 @@ int delete_key(HashTable *ht, uint64_t key)
 }
 
 // 查找操作：返回指向键对应值的指针，找不到返回 NULL
-uint64_t *search(HashTable *ht, uint64_t key) 
+u64 *search(HashTable *ht, u64 key) 
 {
     if (!ht) 
         return NULL;
@@ -98,7 +99,7 @@ uint64_t *search(HashTable *ht, uint64_t key)
 }
 
 // 更新操作：存在则更新，不存在则插入
-int update(HashTable *ht, uint64_t key, uint64_t new_value) 
+int update(HashTable *ht, u64 key, u64 new_value) 
 {
     return insert(ht, key, new_value);
 }

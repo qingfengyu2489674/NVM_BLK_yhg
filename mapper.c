@@ -1,6 +1,7 @@
 #include "mapper.h"
 #include "core.h"
-#include "accessor.h"
+#include "access.h"
+#include "NvmBlkPoolManager/blk_pool.h"
 
 
 int cache_mapper_init(NvmCacheMapper *mapper, u64 nvm_phy_length) 
@@ -11,9 +12,9 @@ int cache_mapper_init(NvmCacheMapper *mapper, u64 nvm_phy_length)
     }
 
     u64 element_size = CACHE_BLOCK_SIZE + MAPPER_ELEMENT_SIZE;
-    u64 block_num = nvm_phy_length / element_size;
+    u64 element_num = nvm_phy_length / element_size;
 
-    mapper->block_num = block_num;
+    mapper->element_num = element_num;
 
     mapper->func_array = malloc(NUM_MAPPER_SCAN_FUNCS * sizeof(mapper_scan_func));
     mapper->func_count = 0;
@@ -30,7 +31,7 @@ void register_mapper_scan_func(NvmCacheMapper *mapper, mapper_scan_func func)
     } 
     else 
     {
-        // 错误处理：函数数组已满
+        // TODO:错误处理,函数数组已满
     }
 }
 
@@ -47,11 +48,11 @@ void cache_mapper_destruct(NvmCacheMapper *self)
         self->func_array = NULL;
     }
     
-    self->block_num = 0;
+    self->element_num = 0;
     self->func_count = 0;
 }
 
-int cache_mapper_get(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id) 
+int get_lba(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id) 
 {
     u64 buffer;
     u64 offset = (id + CACHE_BLOCK_START_INDEX) * MAPPER_ELEMENT_SIZE;
@@ -69,7 +70,7 @@ int cache_mapper_get(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id)
     return 0;
 }
 
-int cache_mapper_set(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id) 
+int set_lba(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id) 
 {
     u64 buffer;
     u64 offset = (*id+1) * MAPPER_ELEMENT_SIZE;
@@ -101,9 +102,9 @@ int cache_mapper_scan(NvmCache *cache)
     register_mapper_scan_func(mapper, build_nvm_empty_block);
     register_mapper_scan_func(mapper, build_nvm_valid_block);
 
-    for(blk_index = 0; blk_index < mapper->block_num; blk_index++)
+    for(blk_index = 0; blk_index < mapper->element_num; blk_index++)
     {
-        ret = cache_mapper_get(accessor, &lba, blk_index);
+        ret = get_lba(accessor, &lba, blk_index);
         if(ret)
         {
             return -1;

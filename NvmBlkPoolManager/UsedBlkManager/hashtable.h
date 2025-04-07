@@ -1,14 +1,13 @@
 #ifndef HASH_TABLE_H
 #define HASH_TABLE_H
 
-#include <stdint.h>
-#include <stdlib.h>
+#include "../defs.h"
 
 // 哈希节点结构体，用于存储键值对及链表指针
 typedef struct HashNode 
 {
-    uint64_t key;
-    uint64_t value;
+    u64 key;
+    u64 value;
     struct HashNode *next;
 } HashNode;
 
@@ -26,10 +25,10 @@ typedef struct HashTable
 
 // 函数声明
 HashTable *create_hashtable(size_t size);
-int insert(HashTable *ht, uint64_t key, uint64_t value);
-int delete_key(HashTable *ht, uint64_t key);
-uint64_t *search(HashTable *ht, uint64_t key);
-int update(HashTable *ht, uint64_t key, uint64_t new_value);
+int insert(HashTable *ht, u64 key, u64 value);
+int delete_key(HashTable *ht, u64 key);
+u64 *search(HashTable *ht, u64 key);
+int update(HashTable *ht, u64 key, u64 new_value);
 void reset_cursor(HashTable *ht);
 HashNode *next(HashTable *ht);
 void destruct_hashtable(HashTable *ht);

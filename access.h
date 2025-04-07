@@ -1,8 +1,9 @@
 #ifndef NVM_ACCESSOR
 #define NVM_ACCESSOR
 
-#include "nvm_manager.h"
 #include "defs.h"
+#include "manager.h"
+#include <linux/types.h>
 
 typedef struct NvmAccessor{
     NvmManager* nvm_addr_map_manager;

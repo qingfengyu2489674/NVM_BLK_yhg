@@ -1,15 +1,12 @@
 #ifndef NVM_CACHE_IO_HANDLER
 #define NVM_CACHE_IO_HANDLER
 
-#include "core.h"
-#include "defs.h"
-
 typedef struct NvmCache NvmCache;
 
 typedef struct NvmCacheIoReq 
 {
     LbaType lba;
-    uint64_t lba_num;
+    u64 lba_num;
     void *buffer;
     NvmCacheIoDir dir;
 
