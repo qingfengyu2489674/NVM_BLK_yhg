@@ -101,8 +101,6 @@ size_t nvm_accessor_write_byte(NvmAccessor* accessor, void *buffer, u64 offset) 
         perror("Failed to write byte");
         return 0;
     }
-
-    printf("Writing byte at offset %llu with value %llu\n", offset, *((u64*)buffer));
     return sizeof(u64);  // 返回写入的字节数
 }
 
@@ -126,8 +124,6 @@ size_t nvm_accessor_read_byte(NvmAccessor* accessor, void *buffer, u64 offset) {
         perror("Failed to read byte");
         return 0;
     }
-
-    printf("Reading byte at offset %llu\n", offset);
 
     return sizeof(u64);  // 返回读取的字节数
 }

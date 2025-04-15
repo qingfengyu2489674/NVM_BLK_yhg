@@ -155,3 +155,25 @@ void destruct_hashtable(HashTable *ht)
     free(ht->buckets);
     free(ht);
 }
+
+void traverse_hashtable(HashTable *ht) 
+{
+    if (!ht) 
+    {
+        printf("HashTable is NULL\n");
+        return;
+    }
+
+    printf("traverse_hashtable\n");
+
+    for (size_t i = 0; i < ht->size; i++) 
+    {
+        HashNode *node = ht->buckets[i];
+        while (node) 
+        {
+            // 打印当前节点的键值对
+            printf("Key: %llu, Value: %llu\n", node->key, node->value);
+            node = node->next;
+        }
+    }
+}

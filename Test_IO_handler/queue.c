@@ -82,3 +82,20 @@ void destruct_queue(Queue *queue)
     }
 }
 
+void print_queue(Queue *queue) 
+{
+    if (is_empty(queue)) 
+    {
+        printf("Queue is empty!\n");
+        return;
+    }
+    
+    Node *current = queue->head;
+    printf("Queue elements: ");
+    while (current != NULL) 
+    {
+        printf("%llu ", current->data);  // 打印当前节点的数据
+        current = current->next;
+    }
+    printf("\n");
+}

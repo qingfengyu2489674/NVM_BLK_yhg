@@ -31,4 +31,7 @@ uint64_t dequeue(Queue *queue);
 // 销毁队列，释放所有节点的内存
 void destruct_queue(Queue *queue);
 
+
+void print_queue(Queue *queue);
+
 #endif /* QUEUE_H */

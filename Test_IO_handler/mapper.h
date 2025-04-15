@@ -14,7 +14,7 @@ typedef struct NvmAccessor NvmAccessor;
 #define NUM_MAPPER_SCAN_FUNCS 10
 #define CACHE_BLOCK_START_INDEX 1
 #define MAPPER_ELEMENT_SIZE 8 
-#define CALCULATE_BLK_ID(element_num) \
+#define CALCULATE_BLK_NUM(element_num) \
     ((size_t)((element_num + CACHE_BLOCK_START_INDEX) * MAPPER_ELEMENT_SIZE + (CACHE_BLOCK_SIZE - 1)) / CACHE_BLOCK_SIZE)
 
 

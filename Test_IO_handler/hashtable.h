@@ -33,5 +33,7 @@ void reset_cursor(HashTable *ht);
 HashNode *next(HashTable *ht);
 void destruct_hashtable(HashTable *ht);
 
+void traverse_hashtable(HashTable *ht);
+
 
 #endif // HASH_TABLE_H

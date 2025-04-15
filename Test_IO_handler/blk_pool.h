@@ -14,7 +14,7 @@ typedef struct NvmCacheBlkPool
 } NvmCacheBlkPool;
 
 // 初始化 NvmCacheBlkPool
-void init_nvm_blk_pool(NvmCacheBlkPool *manager, size_t hash_table_size);
+NvmCacheBlkPool *init_nvm_blk_pool(size_t hash_table_size);
 
 // 构建 NVM 块
 void build_nvm_empty_block(NvmCacheBlkPool *manager, u64 nvm_blk_id, u64 lba);
@@ -30,5 +30,7 @@ int get_empty_block(NvmCacheBlkPool *manager, u64 *nvm_blk_ptr);
 u64 *search_nvm_blk_by_lba(NvmCacheBlkPool *manager, u64 key);
 
 void destroy_nvm_blk_pool(NvmCacheBlkPool *manager);
+
+void traverse_valid_blk(NvmCacheBlkPool *manager); 
 
 #endif // NVM_BLK_MANAGER_H

@@ -6,13 +6,20 @@
 #include "queue.h"
 #include "hashtable.h"
 
-
-// 初始化 NvmCacheBlkPool
-void init_nvm_blk_pool(NvmCacheBlkPool *manager, size_t hash_table_size) 
+NvmCacheBlkPool *init_nvm_blk_pool(size_t hash_table_size) 
 {
+    NvmCacheBlkPool *manager = (NvmCacheBlkPool*)malloc(sizeof(NvmCacheBlkPool));
+    if (!manager) {
+        perror("Failed to allocate memory for NvmCacheBlkPool");
+        return NULL;
+    }
+
     init_queue(&manager->empty_blocks_queue);
+
     manager->used_blocks_table = create_hashtable(hash_table_size);
+    return manager;
 }
+
 
 // 构建 NVM 块
 void build_nvm_block(NvmCacheBlkPool *manager, u64 nvm_blk_id, u64 lba) 
@@ -31,7 +38,7 @@ void build_nvm_empty_block(NvmCacheBlkPool *manager, u64 nvm_blk_id, u64 lba)
 {
     if (lba == UINT64_MAX) 
     {
-        enqueue(&manager->empty_blocks_queue, nvm_blk_id);  // 构建为空块，使用队列管理
+        enqueue(&manager->empty_blocks_queue, nvm_blk_id);
     }
 }
 
@@ -78,4 +85,9 @@ void destroy_nvm_blk_pool(NvmCacheBlkPool *manager)
 {
     destruct_queue(&manager->empty_blocks_queue);
     destruct_hashtable(manager->used_blocks_table);
+}
+
+void traverse_valid_blk(NvmCacheBlkPool *manager)
+{
+    traverse_hashtable(manager->used_blocks_table);
 }

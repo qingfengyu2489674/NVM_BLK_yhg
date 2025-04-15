@@ -69,8 +69,6 @@ int get_lba(NvmAccessor *accessor, LbaType *lba, NvmCacheBlkId id)
 
     int count;
 
-    printf("blk_index: %d \n", id);
-
     count = nvm_accessor_read_byte(accessor, &buffer, offset);
     if (count < sizeof(buffer)) 
     {
@@ -116,7 +114,6 @@ int cache_mapper_scan(NvmCache *cache)
 
     for(blk_index = 0; blk_index < mapper->element_num; blk_index++)
     {
-        printf("blk_index: %d \n", blk_index);
         ret = get_lba(accessor, &lba, blk_index);
         if(ret)
         {

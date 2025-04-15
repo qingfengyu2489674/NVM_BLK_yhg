@@ -12,7 +12,7 @@ GTEST_LIB = -L/usr/src/gtest/lib  # Google Test 库文件路径，如果没有�
 SRCS = $(wildcard *.c)
 
 # 输出的目标可执行文件
-TARGET = Test_mapper
+TARGET = Test_handler
 
 # 默认目标：编译并生成可执行文件
 all: $(TARGET)
