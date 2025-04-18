@@ -78,18 +78,14 @@ int nvm_cache_handle_write_io(NvmCache *cache, NvmCacheIoReq *req)
         u64 *nvm_blk_ptr;
 
         nvm_blk_ptr = NULL;
-
         nvm_blk_ptr = search_nvm_blk_by_lba(cache->blk_pool, req->lba + lba_offset);
 
         void *target_buffer = req->buffer + lba_offset * CACHE_BLOCK_SIZE;
 
-        // 判断 lba 是否在 nvm_blk 中，若在，进入内部逻辑，不在，直接转发至 lower_dev 接口
         if(nvm_blk_ptr)
         {
             NvmCacheBlkId blk_id;
-
             blk_id = CALCULATE_BLK_NUM(cache->mapper->element_num) + *nvm_blk_ptr;
-
 
             ret = nvm_accessor_write_block(cache->accessor, target_buffer, blk_id);
             if (ret < 0) 
@@ -108,9 +104,10 @@ int nvm_cache_handle_write_io(NvmCache *cache, NvmCacheIoReq *req)
             u64 block_id_variable;
 
             ret = get_empty_block(cache->blk_pool, &block_id_variable);
+            NvmCacheBlkId target_back_blk_id;
+            target_back_blk_id = CALCULATE_BLK_NUM(cache->mapper->element_num) + block_id_variable;
 
             nvm_blk_ptr = &block_id_variable;
-
             if(ret == 1 && block_id_variable == UINT64_MAX)
             {
                 fprintf(stderr, "Error: blk_pool allocation failed. Invalid block ID (nvm_blk_ptr: %llu) for lba: %llu\n", 
@@ -158,23 +155,18 @@ int nvm_cache_handle_write_io(NvmCache *cache, NvmCacheIoReq *req)
                     free(write_back_lba);
                     return -EINVAL;
                 }
-
-                // 将数据从 nvm 块中读到 write_back_buffer 中，为下一步写回做准备
-                NvmCacheBlkId write_back_blk_id;
-
-                write_back_blk_id = CALCULATE_BLK_NUM(cache->mapper->element_num) + *write_back_lba;
     
-                ret = nvm_accessor_read_block(cache->accessor, write_back_buffer, write_back_blk_id);
+                ret = nvm_accessor_read_block(cache->accessor, write_back_buffer, target_back_blk_id);
                 if (ret < 0) 
                 {
-                    DEBUG_PRINT("Read block failed, write_back_blk_id: %zu, error: %d\n", write_back_blk_id, ret);
+                    DEBUG_PRINT("Read block failed, target_back_blk_id: %zu, error: %d\n", target_back_blk_id, ret);
                     free(write_back_buffer);
                     free(write_back_lba);
                     return -1;
                 } 
                 else 
                 {
-                    DEBUG_PRINT("write_back_blk_id %zu read successfully into buffer\n", write_back_blk_id);
+                    DEBUG_PRINT("target_back_blk_id %zu read successfully into buffer\n", target_back_blk_id);
                 }
 
                 // LowerDevIoReq *lower_req;
@@ -197,27 +189,19 @@ int nvm_cache_handle_write_io(NvmCache *cache, NvmCacheIoReq *req)
                 //     fprintf(stderr, "Error: IO request failed for LBA: %llu, sector: %llu, sector_num: %llu\n", 
                 //             req->lba, lower_req->sector, lower_req->sector_num);
                 // }
-
-                ret = nvm_accessor_write_block(cache->accessor, target_buffer, write_back_blk_id);
-                if (ret < 0) 
-                {
-                    DEBUG_PRINT("Write block failed, blk_id: %zu, error: %d\n", write_back_blk_id, ret);
-                    free(write_back_buffer);
-                    free(write_back_lba);
-                    // free(lower_req);
-                    return -1;
-                } 
-                else 
-                {
-                    DEBUG_PRINT("Block %zu write successfully into buffer\n", write_back_blk_id);
-                }
-
-                build_nvm_valid_block(cache->blk_pool, block_id_variable, req->lba + lba_offset);
-
-                // free(lower_req);      // 使用 free 替换 kfree
-                free(write_back_buffer);  // 使用 free 替换 kfree
-                free(write_back_lba);    // 使用 free 替换 kfree
             }
+
+            ret = nvm_accessor_write_block(cache->accessor, target_buffer, target_back_blk_id);
+            if (ret < 0) 
+            {
+                DEBUG_PRINT("Write block failed, blk_id: %zu, error: %d\n", target_back_blk_id, ret);
+                return -1;
+            } 
+            else 
+            {
+                DEBUG_PRINT("Block %zu write successfully into buffer\n", target_back_blk_id);
+            }
+            build_nvm_valid_block(cache->blk_pool, block_id_variable, req->lba + lba_offset);
         }
         lba_offset++;
     }
